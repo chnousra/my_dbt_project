@@ -1,21 +1,438 @@
-
 version: 2
 
 models:
-    - name: my_first_dbt_model
-      description: "A starter dbt model"
-      columns:
-          - name: id
-            description: "The primary key for this table"
-            tests:
-                - unique
-                - not_null
+  - name: stg_local_bike__orders
+    description: "This table contains information about orders."
+    columns:
+      - name: order_id
+        description: "Unique identifier for each order."
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Identifier for the customer placing the order."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Identifier for the store associated with the order."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_local_bike__stores')
+              field: store_id
+      - name: staff_id
+        description: "Identifier for the staff handling the order."
+        tests:
+          - relationships:
+              to: ref('stg_local_bike__staffs')
+              field: staff_id
+      - name: order_status
+        description: "Status of the order."
+        tests:
+          - accepted_values:
+              values: ["Registred", "Confirmed", "Cancelled", "Shipped"]
+      - name: order_date
+        description: "Date when the order was placed."
+        tests:
+          - not_null
+      - name: required_date
+        description: "Date when the order is required."
+      - name: shipped_date
+        description: "Date when the order was shipped."
 
-    - name: my_second_dbt_model
-      description: "A starter dbt model"
-      columns:
-          - name: id
-            description: "The primary key for this table"
-            tests:
-                - unique
-                - not_null
+  - name: stg_local_bike__order_items
+    description: "This table contains information about order items."
+    columns:
+      - name: item_id
+        description: "Unique identifier for each order item."
+        tests:
+          - not_null
+          - unique
+      - name: order_id
+        description: "Identifier for the order."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_local_bike__orders')
+              field: order_id
+      - name: product_id
+        description: "Identifier for the product."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_local_bike__products')
+              field: product_id
+      - name: quantity
+        description: "Quantity of the product in this item."
+        tests:
+          - not_null
+          - expression_is_true:
+              expression: "quantity >= 0"
+      - name: price
+        description: "Price per unit of the product."
+        tests:
+          - not_null
+      - name: discount_percent
+        description: "Discount applied to this item."
+        tests:
+          - accepted_values:
+              values: list(range(0, 101))
+
+  - name: stg_local_bike__brands
+    description: "This table contains information about brands."
+    columns:
+      - name: brand_id
+        description: "Unique identifier for each brand."
+        tests:
+          - not_null
+          - unique
+      - name: brand_name
+        description: "Name of the brand."
+        tests:
+          - not_null
+
+  - name: stg_local_bike__categories
+    description: "This table contains information about categories."
+    columns:
+      - name: category_id
+        description: "Unique identifier for each category."
+        tests:
+          - not_null
+          - unique
+      - name: category_name
+        description: "Name of the category."
+        tests:
+          - not_null
+
+  - name: stg_local_bike__products
+    description: "This table contains information about products."
+    columns:
+      - name: product_id
+        description: "Unique identifier for each product."
+        tests:
+          - not_null
+          - unique
+      - name: product_name
+        description: "Name of the product."
+        tests:
+          - not_null
+      - name: category_id
+        description: "Identifier of the category this product belongs to."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_local_bike__categories')
+              field: category_id
+      - name: brand_id
+        description: "Identifier of the brand for this product."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_local_bike__brands')
+              field: brand_id
+      - name: model_year
+        description: "Year of the product model."
+      - name: price
+        description: "Price of the product."
+        tests:
+          - not_null
+
+  - name: stg_local_bike__staffs
+    description: "This table contains information about staff members."
+    columns:
+      - name: staff_id
+        description: "Unique identifier for each staff member."
+        tests:
+          - not_null
+          - unique
+      - name: first_name
+        description: "First name of the staff member."
+        tests:
+          - not_null
+      - name: last_name
+        description: "Last name of the staff member."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Identifier of the store the staff belongs to."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_local_bike__stores')
+              field: store_id
+      - name: active
+        description: "Indicates if the staff member is active (1) or inactive (0)."
+        tests:
+          - accepted_values:
+              values: [0, 1]
+
+  - name: stg_local_bike__stocks
+    description: "This table contains information about stock levels."
+    columns:
+      - name: store_id
+        description: "Identifier of the store."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_local_bike__stores')
+              field: store_id
+      - name: product_id
+        description: "Identifier of the product."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_local_bike__products')
+              field: product_id
+      - name: quantity
+        description: "Quantity of product in stock."
+        tests:
+          - not_null
+          - expression_is_true:
+              expression: "quantity >= 0"
+    tests:
+    - dbt_utils.unique_combination_of_columns:
+        combination_of_columns: ['product_id', 'store_id']
+
+
+  - name: stg_local_bike__stores
+    description: "This table contains information about stores."
+    columns:
+      - name: store_id
+        description: "Unique identifier for each store."
+        tests:
+          - not_null
+          - unique
+      - name: store_name
+        description: "Name of the store."
+        tests:
+          - not_null
+      - name: city
+        description: "City of the store."
+        tests:
+          - not_null
+      - name: state
+        description: "State of the store."
+        tests:
+          - not_null
+      - name: zip_code
+        description: "ZIP code of the store."
+        tests:
+          - not_null
+      - name: active
+        description: "Indicates if the store is active (1) or inactive (0)."
+        tests:
+          - accepted_values:
+              values: [0, 1]
+
+  - name: int_local_bike__sales
+    description: "Aggregated sales data for reporting purposes."
+    columns:
+      - name: order_id
+        description: "Identifier of the order."
+        tests:
+          - not_null
+      - name: customer_id
+        description: "Identifier of the customer."
+      - name: product_id
+        description: "Identifier of the product."
+      - name: store_id
+        description: "Identifier of the store."
+      - name: quantity
+        description: "Total quantity sold."
+      - name: total_amount
+        description: "Total sales amount."
+      - name: total_Registred_order
+        description: "Total amount for 'Registred' orders."
+      - name: total_Confirmed_order
+        description: "Total amount for 'Confirmed' orders."
+      - name: total_Cancelled_order
+        description: "Total amount for 'Cancelled' orders."
+      - name: total_Shipped_order
+        description: "Total amount for 'Shipped' orders."
+      - name: total_Unknown_status_order
+        description: "Total amount for 'Unknown status' orders."
+      - name: order_status
+        description: "Status of the order."
+        tests:
+          - accepted_values:
+              values:
+                [
+                  "Registred",
+                  "Confirmed",
+                  "Cancelled",
+                  "Shipped",
+                  "Unknown status",
+                ]
+  - name: mrt_local_bike__dim_categories
+    description: "Dimension table for product categories."
+    columns:
+      - name: category_id
+        description: "Unique identifier for each category."
+        tests:
+          - not_null
+          - unique
+      - name: category_name
+        description: "Name of the category."
+        tests:
+          - not_null
+
+  - name: mrt_local_bike__dim_products
+    description: "Dimension table for products."
+    columns:
+      - name: product_id
+        description: "Unique identifier for each product."
+        tests:
+          - not_null
+          - unique
+      - name: product_name
+        description: "Name of the product."
+        tests:
+          - not_null
+      - name: category_id
+        description: "Identifier of the category."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('mrt_local_bike__dim_categories')
+              field: category_id
+      - name: brand_name
+        description: "Brand of the product."
+        tests:
+          - not_null
+      - name: model_year
+        description: "Year of the product model."
+      - name: price
+        description: "Price of the product."
+        tests:
+          - not_null
+
+  - name: mrt_local_bike__dim_staffs
+    description: "Dimension table for staff members."
+    columns:
+      - name: staff_id
+        description: "Unique identifier for each staff member."
+        tests:
+          - not_null
+          - unique
+      - name: full_name
+        description: "Full name of the staff member."
+        tests:
+          - not_null
+      - name: store_id
+        description: "Identifier of the store the staff belongs to."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('mrt_local_bike__dim_stores')
+              field: store_id
+      - name: active
+        description: "Indicates if the staff member is active (1) or inactive (0)."
+        tests:
+          - accepted_values:
+              values: [0, 1]
+
+  - name: mrt_local_bike__dim_stores
+    description: "Dimension table for stores."
+    columns:
+      - name: store_id
+        description: "Unique identifier for each store."
+        tests:
+          - not_null
+          - unique
+      - name: store_name
+        description: "Name of the store."
+        tests:
+          - not_null
+      - name: city
+        description: "City of the store."
+        tests:
+          - not_null
+      - name: state
+        description: "State of the store."
+        tests:
+          - not_null
+      - name: active
+        description: "Indicates if the store is active (1) or inactive (0)."
+        tests:
+          - accepted_values:
+              values: [0, 1]
+
+  - name: mrt_local_bike__fact_sales
+    description: "Fact table for sales."
+    columns:
+      - name: order_id
+        description: "Identifier of the order."
+        tests:
+          - not_null
+      - name: customer_id
+        description: "Identifier of the customer."
+        tests:
+          - not_null
+      - name: product_id
+        description: "Identifier of the product."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('mrt_local_bike__dim_products')
+              field: product_id
+      - name: store_id
+        description: "Identifier of the store."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('mrt_local_bike__dim_stores')
+              field: store_id
+      - name: staff_id
+        description: "Identifier of the staff."
+        tests:
+          - relationships:
+              to: ref('mrt_local_bike__dim_staffs')
+              field: staff_id
+      - name: quantity
+        description: "Quantity sold."
+        tests:
+          - not_null
+          - expression_is_true:
+              expression: "quantity >= 0"
+      - name: total_amount
+        description: "Total amount of the sale."
+        tests:
+          - not_null
+          - expression_is_true:
+              expression: "total_amount >= 0"
+      - name: order_status
+        description: "Status of the order."
+        tests:
+          - accepted_values:
+              values:
+                [
+                  "Registred",
+                  "Confirmed",
+                  "Cancelled",
+                  "Shipped",
+                  "Unknown status",
+                ]
+
+  - name: mrt_local_bike__fact_stocks
+    description: "Fact table for stock levels."
+    columns:
+      - name: store_id
+        description: "Identifier of the store."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('mrt_local_bike__dim_stores')
+              field: store_id
+      - name: product_id
+        description: "Identifier of the product."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('mrt_local_bike__dim_products')
+              field: product_id
+      - name: quantity
+        description: "Quantity of product in stock."
+        tests:
+          - not_null
+          - expression_is_true:
+              expression: "quantity >= 0"
